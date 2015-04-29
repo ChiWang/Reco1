@@ -1,0 +1,65 @@
+#! /usr/bin/python
+'''
+ *  $Id: JobOpt_Rec1_fromRoot, 2015-04-29 20:04:56 DAMPE $
+ *  Author(s):
+ *    Chi WANG (chiwang@mail.ustc.edu.cn) 11/03/2014
+#-------------------------------------------------------------------
+    NOTE:   input data is scientific root data(after Hex2Root)
+'''
+
+#-------------------------------------------------------------------
+import os
+import DMPSW                    # Load DAMPE software
+import libDmpRec1_Hits as DmpRec1
+
+#-------------------------------------------------------------------
+# Global setting
+DMPSW.Core.SetEventNumber(200)     # default: -1
+#DMPSW.Core.SetStartTime("2014-11-18 20:30:10")     # default: 2013-01-01 00:00:00
+#DMPSW.Core.SetStopTime("2014-11-18 20:40:30")      # default: 2053-01-01 00:00:00
+#DMPSW.Core.LogLevel("Debug")      # Value = {Error | Warning | Info | Debug}. default: Info.
+#DMPSW.Core.LogHeader("On") # default: off
+
+#-------------------------------------------------------------------
+# RootIOSvc options
+#DMPSW.RootIOSvc.InputPath(os.environ["DMPSWWORK"]+"/data/sci")
+inputFileName = "./A2Data00_20141117_135210-Rec0.root"
+DMPSW.RootIOSvc.SetInputFile(inputFileName)
+#DMPSW.RootIOSvc.SetOutputFile("./Dmptest15.root")
+DMPSW.RootIOSvc.SetWriteList("Event/Rec1")  # split by ;
+#DMPSW.RootIOSvc.OutputPath(os.environ["DMPSWWORK"]+"/run/data/cal/ped")
+
+#-------------------------------------------------------------------
+# Creat user's service or algorithm
+Rec1 = DmpRec1.DmpAlgRec1_Hits()
+DMPSW.AlgMgr.Append(Rec1)
+
+def findPedFile(path,ID,ref_time,tag):
+        ped_time="0"
+        ped_fn="NO"
+        fNamoes=os.listdir(path)
+        for fn in fNamoes:
+                if (tag not in fn) or (ID not in fn):
+                        continue
+                fn_time = fn[13:21]
+                fn_time = fn_time+fn[22:28]
+                if (int(fn_time) <= int(ref_time) and int(fn_time) > int(ped_time)):
+                        ped_time = fn_time
+                        ped_fn = fn
+        return ped_fn
+
+inputStem = inputFileName.split("/")
+inputStem = inputStem[-1]
+inf_time = inputStem[9:17]
+inf_time = inf_time+inputStem[18:24]
+parPath = "/home/chi/dmpwork/MyData/Calibration/DAMPE/Mips/"
+for iD in ["Bgo","Psd"]:
+        parF = findPedFile(parPath,iD,inf_time,".mip")
+        #Rec1.SetMipsFile(iD,parPath+parF)
+
+#-------------------------------------------------------------------
+# Run job
+DMPSW.Core.Initialize()
+DMPSW.Core.Run()
+DMPSW.Core.Finalize()
+
